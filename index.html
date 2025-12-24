@@ -13,15 +13,18 @@ margin: 0;
 padding: 12px;
 }
 
+/* 見出し */
 h1 { font-size: 18px; }
 h2 { font-size: 14px; margin-top: 16px; color: #555; }
 
+/* グリッド（iPhone優先） */
 .grid {
 display: grid;
 grid-template-columns: repeat(4, 1fr);
 gap: 8px;
 }
 
+/* 家事アイコン */
 .chore {
 background: #fff;
 border-radius: 8px;
@@ -42,6 +45,7 @@ background: #ff3b30;
 color: #fff;
 }
 
+/* 追加ボタン */
 .add-button {
 margin: 16px 0;
 padding: 8px;
@@ -51,14 +55,32 @@ color: #555;
 border-radius: 8px;
 font-size: 12px;
 }
+
+/* ===== クマ表示エリア ===== */
+#bear-area {
+margin: 24px 0 8px;
+text-align: center;
+}
+
+#bear-area img {
+width: 60%;
+max-width: 280px;
+}
 </style>
 </head>
 
 <body>
 
 <h1>家事ダッシュボード</h1>
+
 <div id="app"></div>
+
 <div class="add-button" onclick="addChore()">＋ 家事を追加</div>
+
+<!-- クマ -->
+<div id="bear-area">
+<img id="bear-image" src="">
+</div>
 
 <script>
 const groups = [
@@ -70,27 +92,27 @@ const groups = [
 let chores = JSON.parse(localStorage.getItem("chores")) || [];
 let pressTimer = null;
 
-/* ===== 危険度計算 ===== */
+/* 危険度 */
 function getDangerScore(chore) {
-if (!chore.lastDone) return 3; // 未実施
+if (!chore.lastDone) return 3;
 
 const now = new Date();
 const last = new Date(chore.lastDone);
 const limit = new Date(last);
 limit.setDate(limit.getDate() + groups[chore.group].days);
 
-if (now <= limit) return 2; // 期限内
+if (now <= limit) return 2;
 
 const overdueDays = Math.floor((now - limit) / 86400000);
-if (overdueDays >= 7) return 0; // 最危険
+if (overdueDays >= 7) return 0;
 
-return 1; // 期限切れ
+return 1;
 }
 
 function getStatus(chore) {
-const score = getDangerScore(chore);
-if (score === 0) return "overdue";
-if (score === 2) return "done";
+const s = getDangerScore(chore);
+if (s === 0) return "overdue";
+if (s === 2) return "done";
 return "none";
 }
 
@@ -100,7 +122,22 @@ const d = new Date(dateString);
 return `${d.getMonth()+1}/${d.getDate()}`;
 }
 
-/* ===== 描画 ===== */
+/* ===== クマ更新 ===== */
+function updateBear() {
+const total = chores.length;
+if (total === 0) return;
+
+const doneCount = chores.filter(c => getDangerScore(c) === 2).length;
+const percent = Math.round((doneCount / total) * 100);
+
+const img = document.getElementById("bear-image");
+
+if (percent <= 30) img.src = "bear_sad.png";
+else if (percent <= 70) img.src = "bear_normal.png";
+else img.src = "bear_happy.png";
+}
+
+/* 描画 */
 function render() {
 const app = document.getElementById("app");
 app.innerHTML = "";
@@ -113,12 +150,11 @@ app.appendChild(h2);
 const grid = document.createElement("div");
 grid.className = "grid";
 
-const filtered = chores
+chores
 .map((c, i) => ({ ...c, index: i }))
 .filter(c => c.group === gIndex)
-.sort((a, b) => getDangerScore(a) - getDangerScore(b));
-
-filtered.forEach(item => {
+.sort((a, b) => getDangerScore(a) - getDangerScore(b))
+.forEach(item => {
 const div = document.createElement("div");
 const status = getStatus(item);
 
@@ -131,13 +167,11 @@ div.innerHTML = `
 <div style="font-size:10px;opacity:0.8">${formatDate(item.lastDone)}</div>
 `;
 
-/* タップ */
 div.onclick = () => {
 chores[item.index].lastDone = new Date().toISOString();
 save();
 };
 
-/* 長押し編集 */
 div.ontouchstart = () => {
 pressTimer = setTimeout(() => openEditMenu(item.index), 800);
 };
@@ -148,30 +182,29 @@ grid.appendChild(div);
 
 app.appendChild(grid);
 });
+
+updateBear();
 }
 
-/* ===== 編集 ===== */
+/* 編集 */
 function openEditMenu(index) {
-const choice = prompt(
-"編集\n1:名前変更\n2:グループ変更\n3:削除"
-);
-
-if (choice === "1") {
+const c = prompt("編集\n1:名前変更\n2:グループ変更\n3:削除");
+if (c === "1") {
 const n = prompt("新しい名前", chores[index].name);
 if (n) chores[index].name = n;
 }
-if (choice === "2") {
+if (c === "2") {
 const g = prompt("0:7日 1:1ヶ月 2:3ヶ月");
 if (["0","1","2"].includes(g)) chores[index].group = Number(g);
 }
-if (choice === "3") {
+if (c === "3") {
 if (!confirm("削除しますか？")) return;
 chores.splice(index, 1);
 }
 save();
 }
 
-/* ===== 追加 ===== */
+/* 追加 */
 function addChore() {
 const name = prompt("家事名");
 if (!name) return;
