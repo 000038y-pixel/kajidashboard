@@ -13,59 +13,35 @@ margin: 0;
 padding: 12px;
 }
 
-h1 {
-font-size: 18px;
-}
+h1 { font-size: 18px; }
+h2 { font-size: 14px; margin-top: 16px; color: #555; }
 
-h2 {
-font-size: 14px;
-margin-top: 16px;
-color: #555;
-}
-
-/* ===== グリッド：iPhone優先 ===== */
 .grid {
 display: grid;
 grid-template-columns: repeat(4, 1fr);
 gap: 8px;
 }
 
-/* ===== 家事アイコン ===== */
 .chore {
-background: #ffffff;
+background: #fff;
 border-radius: 8px;
 padding: 6px 4px;
 text-align: center;
 box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-user-select: none;
 font-size: 11px;
-line-height: 1.2;
+user-select: none;
 }
 
-/* 期限内 */
 .chore.done {
 background: #1c1c1e;
 color: #fff;
 }
 
-/* 期限切れ7日以上 */
 .chore.overdue {
 background: #ff3b30;
 color: #fff;
 }
 
-.chore .name {
-font-weight: 500;
-margin-bottom: 2px;
-word-break: break-word;
-}
-
-.chore .date {
-font-size: 10px;
-opacity: 0.8;
-}
-
-/* ===== 追加ボタン（控えめ） ===== */
 .add-button {
 margin: 16px 0;
 padding: 8px;
@@ -81,43 +57,47 @@ font-size: 12px;
 <body>
 
 <h1>家事ダッシュボード</h1>
-
 <div id="app"></div>
-
 <div class="add-button" onclick="addChore()">＋ 家事を追加</div>
 
 <script>
 const groups = [
-{ title: "7日以内に実施", days: 7 },
-{ title: "1ヶ月以内に実施", days: 30 },
-{ title: "3ヶ月以内に実施", days: 90 }
+{ title: "7日以内", days: 7 },
+{ title: "1ヶ月以内", days: 30 },
+{ title: "3ヶ月以内", days: 90 }
 ];
 
 let chores = JSON.parse(localStorage.getItem("chores")) || [];
+let pressTimer = null;
 
-/* ===== 状態判定 ===== */
-function getStatus(chore) {
-if (!chore.lastDone) return "none";
+/* ===== 危険度計算 ===== */
+function getDangerScore(chore) {
+if (!chore.lastDone) return 3; // 未実施
 
-const last = new Date(chore.lastDone);
 const now = new Date();
-
+const last = new Date(chore.lastDone);
 const limit = new Date(last);
 limit.setDate(limit.getDate() + groups[chore.group].days);
 
-if (now <= limit) return "done";
+if (now <= limit) return 2; // 期限内
 
-const overdueDays = Math.floor((now - limit) / (1000 * 60 * 60 * 24));
-if (overdueDays >= 7) return "overdue";
+const overdueDays = Math.floor((now - limit) / 86400000);
+if (overdueDays >= 7) return 0; // 最危険
 
+return 1; // 期限切れ
+}
+
+function getStatus(chore) {
+const score = getDangerScore(chore);
+if (score === 0) return "overdue";
+if (score === 2) return "done";
 return "none";
 }
 
 function formatDate(dateString) {
 if (!dateString) return "未実施";
 const d = new Date(dateString);
-return String(d.getMonth() + 1).padStart(2, "0") + "/" +
-String(d.getDate()).padStart(2, "0");
+return `${d.getMonth()+1}/${d.getDate()}`;
 }
 
 /* ===== 描画 ===== */
@@ -133,58 +113,73 @@ app.appendChild(h2);
 const grid = document.createElement("div");
 grid.className = "grid";
 
-chores.forEach((chore, cIndex) => {
-if (chore.group === gIndex) {
-const status = getStatus(chore);
+const filtered = chores
+.map((c, i) => ({ ...c, index: i }))
+.filter(c => c.group === gIndex)
+.sort((a, b) => getDangerScore(a) - getDangerScore(b));
+
+filtered.forEach(item => {
 const div = document.createElement("div");
+const status = getStatus(item);
 
 div.className = "chore";
 if (status === "done") div.classList.add("done");
 if (status === "overdue") div.classList.add("overdue");
 
 div.innerHTML = `
-<div class="name">${chore.name}</div>
-<div class="date">${formatDate(chore.lastDone)}</div>
+<div>${item.name}</div>
+<div style="font-size:10px;opacity:0.8">${formatDate(item.lastDone)}</div>
 `;
 
+/* タップ */
 div.onclick = () => {
-chore.lastDone = new Date().toISOString();
+chores[item.index].lastDone = new Date().toISOString();
 save();
 };
 
-div.oncontextmenu = (e) => {
-e.preventDefault();
-if (confirm("この家事を削除しますか？")) {
-chores.splice(cIndex, 1);
-save();
-}
+/* 長押し編集 */
+div.ontouchstart = () => {
+pressTimer = setTimeout(() => openEditMenu(item.index), 800);
 };
+div.ontouchend = () => clearTimeout(pressTimer);
 
 grid.appendChild(div);
-}
 });
 
 app.appendChild(grid);
 });
 }
 
-/* ===== 追加 ===== */
-function addChore() {
-const name = prompt("家事の名前を入力してください");
-if (!name) return;
-
-const group = prompt(
-"グループ番号を入力してください\n0: 7日以内\n1: 1ヶ月以内\n2: 3ヶ月以内"
+/* ===== 編集 ===== */
+function openEditMenu(index) {
+const choice = prompt(
+"編集\n1:名前変更\n2:グループ変更\n3:削除"
 );
 
-if (!["0","1","2"].includes(group)) return;
+if (choice === "1") {
+const n = prompt("新しい名前", chores[index].name);
+if (n) chores[index].name = n;
+}
+if (choice === "2") {
+const g = prompt("0:7日 1:1ヶ月 2:3ヶ月");
+if (["0","1","2"].includes(g)) chores[index].group = Number(g);
+}
+if (choice === "3") {
+if (!confirm("削除しますか？")) return;
+chores.splice(index, 1);
+}
+save();
+}
 
-chores.push({
-name: name,
-group: Number(group),
-lastDone: null
-});
+/* ===== 追加 ===== */
+function addChore() {
+const name = prompt("家事名");
+if (!name) return;
 
+const g = prompt("0:7日 1:1ヶ月 2:3ヶ月");
+if (!["0","1","2"].includes(g)) return;
+
+chores.push({ name, group: Number(g), lastDone: null });
 save();
 }
 
