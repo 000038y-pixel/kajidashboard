@@ -40,6 +40,16 @@ color: #fff;
 .chore span {
 font-size: 12px;
 }
+
+.add-button {
+margin: 32px 0;
+padding: 16px;
+text-align: center;
+background: #007aff;
+color: white;
+border-radius: 12px;
+font-size: 16px;
+}
 </style>
 </head>
 
@@ -49,6 +59,8 @@ font-size: 12px;
 
 <div id="app"></div>
 
+<div class="add-button" onclick="addChore()">＋ 家事を追加</div>
+
 <script>
 const groups = [
 { title: "7日以内に実施", days: 7 },
@@ -56,12 +68,7 @@ const groups = [
 { title: "3ヶ月以内に実施", days: 90 }
 ];
 
-let chores = JSON.parse(localStorage.getItem("chores")) || [
-{ name: "風呂掃除", group: 0, lastDone: null },
-{ name: "洗濯槽", group: 1, lastDone: null },
-{ name: "洗車", group: 1, lastDone: null },
-{ name: "網戸掃除", group: 2, lastDone: null }
-];
+let chores = JSON.parse(localStorage.getItem("chores")) || [];
 
 function isDone(chore) {
 if (!chore.lastDone) return false;
@@ -93,12 +100,39 @@ chore.lastDone = new Date().toISOString();
 save();
 };
 
+div.oncontextmenu = (e) => {
+e.preventDefault();
+if (confirm("この家事を削除しますか？")) {
+chores.splice(cIndex, 1);
+save();
+}
+};
+
 grid.appendChild(div);
 }
 });
 
 app.appendChild(grid);
 });
+}
+
+function addChore() {
+const name = prompt("家事の名前を入力してください");
+if (!name) return;
+
+const group = prompt(
+"グループ番号を入力してください\n0: 7日以内\n1: 1ヶ月以内\n2: 3ヶ月以内"
+);
+
+if (group === null || !["0","1","2"].includes(group)) return;
+
+chores.push({
+name: name,
+group: Number(group),
+lastDone: null
+});
+
+save();
 }
 
 function save() {
