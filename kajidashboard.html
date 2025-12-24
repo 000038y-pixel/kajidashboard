@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家事ダッシュボード</title>
+
+<style>
+body {
+font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+background: #f5f5f5;
+margin: 0;
+padding: 16px;
+}
+
+h2 {
+margin-top: 24px;
+}
+
+.grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 12px;
+}
+
+.chore {
+background: white;
+border-radius: 12px;
+padding: 12px;
+text-align: center;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+user-select: none;
+}
+
+.chore.done {
+background: #000;
+color: #fff;
+}
+
+.chore span {
+font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>家事ダッシュボード</h1>
+
+<div id="app"></div>
+
+<script>
+const groups = [
+{ title: "7日以内に実施", days: 7 },
+{ title: "1ヶ月以内に実施", days: 30 },
+{ title: "3ヶ月以内に実施", days: 90 }
+];
+
+let chores = JSON.parse(localStorage.getItem("chores")) || [
+{ name: "風呂掃除", group: 0, lastDone: null },
+{ name: "洗濯槽", group: 1, lastDone: null },
+{ name: "洗車", group: 1, lastDone: null },
+{ name: "網戸掃除", group: 2, lastDone: null }
+];
+
+function isDone(chore) {
+if (!chore.lastDone) return false;
+const limit = new Date(chore.lastDone);
+limit.setDate(limit.getDate() + groups[chore.group].days);
+return new Date() <= limit;
+}
+
+function render() {
+const app = document.getElementById("app");
+app.innerHTML = "";
+
+groups.forEach((group, gIndex) => {
+const h2 = document.createElement("h2");
+h2.textContent = group.title;
+app.appendChild(h2);
+
+const grid = document.createElement("div");
+grid.className = "grid";
+
+chores.forEach((chore, cIndex) => {
+if (chore.group === gIndex) {
+const div = document.createElement("div");
+div.className = "chore" + (isDone(chore) ? " done" : "");
+div.innerHTML = "✔<br><span>" + chore.name + "</span>";
+
+div.onclick = () => {
+chore.lastDone = new Date().toISOString();
+save();
+};
+
+grid.appendChild(div);
+}
+});
+
+app.appendChild(grid);
+});
+}
+
+function save() {
+localStorage.setItem("chores", JSON.stringify(chores));
+render();
+}
+
+render();
+</script>
+
+</body>
+</html>
