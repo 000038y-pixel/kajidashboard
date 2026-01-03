@@ -1,216 +1,170 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>家事ダッシュボード</title>
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ffffff">
-
-<!-- キャッシュ対策 -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#ffffff" />
 
 <style>
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 0;
-  padding: 10px;
+  padding: 12px;
+  background: #f7f7f7;
 }
 
-h2 {
-  margin-top: 28px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.task {
-  border: 1px solid #ccc;
-  padding: 6px;
-  text-align: center;
-  font-size: 12px;
-  border-radius: 8px;
-  background: white;
-}
-
-.task.done {
-  background: #333;
-  color: white;
-}
-
-.small {
-  font-size: 10px;
-  opacity: 0.8;
+h1 {
+  font-size: 18px;
+  margin-bottom: 8px;
 }
 
 button {
-  margin-top: 8px;
   padding: 6px 10px;
-  font-size: 12px;
-  background: #eee;
-  border: none;
-  border-radius: 6px;
+  font-size: 14px;
+  margin-right: 6px;
 }
 
-#bearBox {
+#taskGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task {
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px;
+  text-align: center;
+  position: relative;
+  font-size: 12px;
+}
+
+.task.overdue {
+  background: #ffd6d6;
+}
+
+.task-icon {
+  font-size: 22px;
+}
+
+.task-date {
+  font-size: 11px;
+  color: #666;
+}
+
+.edit-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* クマ */
+#bear {
   position: fixed;
-  top: 6px;
-  right: 6px;
-  width: 90px;
+  top: 10px;
+  right: 10px;
+  width: 80px;
   text-align: center;
   z-index: 1000;
 }
 
-#bearBox img {
-  width: 70px;
+#bear img {
+  width: 100%;
 }
 
 #bearComment {
-  font-size: 11px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 6px;
+  padding: 4px;
+  margin-top: 2px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="bearBox">
-  <img id="bearImg" src="bear_normal.png">
-  <div id="bearComment">がんばろう！</div>
-</div>
+<h1>家事ダッシュボード</h1>
 
 <button onclick="addTask()">家事を追加</button>
 <button onclick="addCategory()">分類を追加</button>
 
-<div id="app"></div>
+<div id="taskGrid"></div>
+
+<!-- クマ -->
+<div id="bear">
+  <img id="bearImg" src="bear_normal.png" />
+  <div id="bearComment">がんばろう！</div>
+</div>
 
 <script>
-/* ===== Service Worker ===== */
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js");
+let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+let categories = JSON.parse(localStorage.getItem("categories") || '["7日以内","1か月以内"]');
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return `${String(d.getFullYear()).slice(2)}/${d.getMonth()+1}/${d.getDate()}`;
 }
 
-/* ===== データ ===== */
-let categories = JSON.parse(
-  localStorage.getItem("categories") ||
-  JSON.stringify([
-    { name: "7日以内", limit: 7 },
-    { name: "1ヶ月以内", limit: 30 },
-    { name: "3ヶ月以内", limit: 90 }
-  ])
-);
-
-let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-
-/* ===== 共通 ===== */
 function save() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
   localStorage.setItem("categories", JSON.stringify(categories));
 }
 
-function daysFrom(d) {
-  return Math.floor((Date.now() - new Date(d)) / 86400000);
-}
-
-function formatDate(d) {
-  const date = new Date(d);
-  return `${date.getFullYear() % 100}/${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-/* ===== クマ ===== */
-function updateBear(message) {
-  const done = tasks.filter(t => daysFrom(t.lastDone) <= t.limit).length;
-  const rate = tasks.length ? done / tasks.length : 0;
-
-  const img = document.getElementById("bearImg");
-  const comment = document.getElementById("bearComment");
-
-  if (message) {
-    comment.textContent = message;
-    return;
-  }
-
-  if (rate <= 0.3) {
-    img.src = "bear_sad.png";
-    comment.textContent = "ゆっくりでいいよ…";
-  } else if (rate <= 0.7) {
-    img.src = "bear_normal.png";
-    comment.textContent = "いい調子！";
-  } else {
-    img.src = "bear_happy.png";
-    comment.textContent = "すごい！完璧！";
-  }
-}
-
-/* ===== 描画 ===== */
 function render() {
-  const app = document.getElementById("app");
-  app.innerHTML = "";
+  const grid = document.getElementById("taskGrid");
+  grid.innerHTML = "";
 
-  categories.forEach(cat => {
-    const h = document.createElement("h2");
-    h.textContent = cat.name;
-    app.appendChild(h);
+  const now = new Date();
 
-    const grid = document.createElement("div");
-    grid.className = "grid";
+  tasks.forEach((t, i) => {
+    const last = new Date(t.last);
+    const diff = Math.floor((now - last) / 86400000);
 
-    tasks.filter(t => t.category === cat.name).forEach(t => {
-      const d = daysFrom(t.lastDone);
-      const div = document.createElement("div");
+    const div = document.createElement("div");
+    div.className = "task" + (diff > 7 ? " overdue" : "");
 
-      div.className = "task" + (d <= t.limit ? " done" : "");
-      if (d > t.limit + 7) div.style.background = "red";
+    div.innerHTML = `
+      <button class="edit-btn" onclick="editTask(${i})">⋮</button>
+      <div class="task-icon">${t.icon}</div>
+      <div>${t.name}</div>
+      <div class="task-date">${formatDate(t.last)}</div>
+    `;
 
-      div.innerHTML = `
-        ${t.name}<br>
-        <span class="small">${formatDate(t.lastDone)}</span>
-      `;
+    div.onclick = (e) => {
+      if (e.target.classList.contains("edit-btn")) return;
+      t.last = new Date().toISOString();
+      showCheer();
+      save();
+      render();
+    };
 
-      div.onclick = () => {
-        t.lastDone = new Date().toISOString();
-        save();
-        updateBear("えらい！家事できたね！");
-        render();
-      };
-
-      div.oncontextmenu = e => {
-        e.preventDefault();
-        editTask(t);
-      };
-
-      grid.appendChild(div);
-    });
-
-    app.appendChild(grid);
+    grid.appendChild(div);
   });
 
   updateBear();
 }
 
-/* ===== 操作 ===== */
 function addTask() {
   const name = prompt("家事名");
   if (!name) return;
 
-  const cat = prompt(
-    "分類：" + categories.map(c => c.name).join(",")
-  );
-  const selected = categories.find(c => c.name === cat);
-  if (!selected) return alert("分類が見つかりません");
+  const icon = prompt("絵文字（例：🧹）") || "🧹";
+  const cat = categories[0];
 
   tasks.push({
     name,
-    category: selected.name,
-    limit: selected.limit,
-    lastDone: new Date().toISOString(),
+    icon,
+    category: cat,
+    last: new Date().toISOString(),
     memo: ""
   });
 
@@ -218,28 +172,62 @@ function addTask() {
   render();
 }
 
-function addCategory() {
-  const name = prompt("分類名");
-  const limit = parseInt(prompt("期限（日数）"));
-  if (!name || !limit) return;
+function editTask(i) {
+  const t = tasks[i];
+  const action = prompt(
+`1: 名前変更
+2: メモ編集
+3: 削除`
+  );
 
-  categories.push({ name, limit });
-  save();
-  render();
-}
-
-function editTask(t) {
-  const memo = prompt("メモ（削除は delete）", t.memo || "");
-  if (memo === "delete") {
-    tasks = tasks.filter(x => x !== t);
-  } else {
-    t.memo = memo;
+  if (action === "1") {
+    const n = prompt("新しい名前", t.name);
+    if (n) t.name = n;
+  } else if (action === "2") {
+    t.memo = prompt("メモ", t.memo) || "";
+  } else if (action === "3") {
+    if (confirm("削除しますか？")) tasks.splice(i, 1);
   }
+
   save();
   render();
 }
 
-/* ===== 初期描画 ===== */
+function addCategory() {
+  const c = prompt("分類名");
+  if (!c) return;
+  categories.push(c);
+  save();
+}
+
+function updateBear() {
+  const total = tasks.length;
+  if (total === 0) return;
+
+  const done = tasks.filter(t => {
+    const diff = (new Date() - new Date(t.last)) / 86400000;
+    return diff < 1;
+  }).length;
+
+  const rate = (done / total) * 100;
+  const img = document.getElementById("bearImg");
+
+  if (rate <= 30) img.src = "bear_cry.png";
+  else if (rate <= 70) img.src = "bear_normal.png";
+  else img.src = "bear_happy.png";
+}
+
+function showCheer() {
+  const comments = [
+    "えらい！",
+    "その調子！",
+    "よくやったね！",
+    "最高！"
+  ];
+  document.getElementById("bearComment").textContent =
+    comments[Math.floor(Math.random() * comments.length)];
+}
+
 render();
 </script>
 
