@@ -9,6 +9,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 8px;
+  padding-top: 90px; /* クマ分の余白 */
 }
 
 h3 { margin-bottom: 4px; }
@@ -52,6 +53,31 @@ button {
   opacity: .6;
 }
 
+/* ===== クマ固定表示 ===== */
+#bearBox {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  text-align: center;
+  z-index: 1000;
+}
+
+#bearBox img {
+  width: 90px;
+}
+
+#bearComment {
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-top: 4px;
+  display: none;
+  max-width: 140px;
+}
+
+/* ===== モーダル ===== */
 .modal {
   position: fixed;
   inset: 0;
@@ -67,15 +93,6 @@ button {
   width: 90%;
   border-radius: 8px;
 }
-
-#bear {
-  margin-top: 16px;
-  text-align: center;
-}
-#bear img {
-  width: 90%;
-  max-width: 300px;
-}
 </style>
 </head>
 
@@ -88,8 +105,10 @@ button {
 
 <div id="taskArea"></div>
 
-<div id="bear">
+<!-- クマ固定 -->
+<div id="bearBox">
   <img id="bearImg" src="bear_normal.png">
+  <div id="bearComment"></div>
 </div>
 
 <div id="modal" class="modal">
@@ -97,6 +116,14 @@ button {
 </div>
 
 <script>
+const cheerMessages = [
+  "いい感じ！その調子！",
+  "えらい！ちゃんと進んでるね",
+  "ナイス！家が喜んでるよ",
+  "さすが！一歩前進！",
+  "今日も頑張ってるね！"
+];
+
 const state = {
   tasks: JSON.parse(localStorage.getItem("tasks") || "[]"),
   categories: JSON.parse(localStorage.getItem("categories") || JSON.stringify([
@@ -113,6 +140,18 @@ function save() {
 
 function daysFrom(date) {
   return Math.floor((Date.now() - new Date(date)) / 86400000);
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()%100}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function showCheer() {
+  const el = document.getElementById("bearComment");
+  el.textContent = cheerMessages[Math.floor(Math.random()*cheerMessages.length)];
+  el.style.display = "block";
+  setTimeout(()=>el.style.display="none", 2500);
 }
 
 function render() {
@@ -142,7 +181,7 @@ function render() {
 
       el.innerHTML = `
         ${t.title}<br>
-        <span class="small">${t.lastDone}</span>
+        <span class="small">${formatDate(t.lastDone)}</span>
       `;
 
       let timer;
@@ -151,7 +190,9 @@ function render() {
 
       el.onclick = () => {
         t.lastDone = new Date().toISOString().slice(0,10);
-        save(); render();
+        save();
+        showCheer();
+        render();
       };
 
       g.appendChild(el);
@@ -164,22 +205,19 @@ function render() {
 }
 
 function updateBear(done) {
-  const total = state.tasks.length || 1;
-  const rate = done / total * 100;
+  const rate = done / (state.tasks.length || 1) * 100;
   const img = document.getElementById("bearImg");
-
   if (rate <= 30) img.src = "bear_sad.png";
   else if (rate <= 70) img.src = "bear_normal.png";
   else img.src = "bear_happy.png";
 }
 
+/* ===== 既存機能 ===== */
 function showModal(html) {
   modalInner.innerHTML = html;
   modal.style.display = "flex";
 }
-function closeModal() {
-  modal.style.display = "none";
-}
+function closeModal() { modal.style.display = "none"; }
 
 function addTask() {
   showModal(`
@@ -191,8 +229,7 @@ function addTask() {
     <button onclick="closeModal()">キャンセル</button>
   `);
 }
-
-function selectCat(id){ document.getElementById("cat").value=id; }
+function selectCat(id){ cat.value=id; }
 
 function saveTask() {
   state.tasks.push({
@@ -210,19 +247,17 @@ function editTask(id) {
   showModal(`
     <h4>編集</h4>
     <input id="ename" value="${t.title}"><br><br>
-    <textarea id="ememo" placeholder="メモ">${t.memo||""}</textarea><br><br>
+    <textarea id="ememo">${t.memo||""}</textarea><br><br>
     <button onclick="updateTask('${id}')">保存</button>
     <button onclick="deleteTask('${id}')">削除</button>
   `);
 }
-
 function updateTask(id){
   const t = state.tasks.find(x=>x.id===id);
   t.title = ename.value;
   t.memo = ememo.value;
   save(); closeModal(); render();
 }
-
 function deleteTask(id){
   state.tasks = state.tasks.filter(x=>x.id!==id);
   save(); closeModal(); render();
@@ -237,7 +272,6 @@ function addCategory(){
     <button onclick="closeModal()">キャンセル</button>
   `);
 }
-
 function saveCategory(){
   state.categories.push({
     id: Date.now().toString(),
