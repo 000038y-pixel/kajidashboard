@@ -15,20 +15,27 @@ body {
   background: #f7f7f7;
 }
 
-h1 {
-  font-size: 18px;
-}
+h1 { font-size: 18px; }
 
 button {
   padding: 6px 10px;
   font-size: 14px;
 }
 
-#taskGrid {
+.category-section {
+  margin-top: 16px;
+}
+
+.category-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.taskGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 8px;
-  margin-top: 12px;
 }
 
 .task {
@@ -46,13 +53,11 @@ button {
 
 .task-name {
   font-weight: 500;
-  word-break: break-word;
 }
 
 .task-date {
   font-size: 11px;
   color: #666;
-  margin-top: 2px;
 }
 
 .edit-btn {
@@ -102,9 +107,7 @@ button {
   text-align: center;
 }
 
-#bear img {
-  width: 100%;
-}
+#bear img { width: 100%; }
 
 #bearComment {
   font-size: 12px;
@@ -121,7 +124,7 @@ button {
 <button onclick="openAdd()">家事を追加</button>
 <button onclick="addCategory()">分類を追加</button>
 
-<div id="taskGrid"></div>
+<div id="dashboard"></div>
 
 <!-- クマ -->
 <div id="bear">
@@ -143,7 +146,11 @@ button {
 
 <script>
 let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-let categories = JSON.parse(localStorage.getItem("categories") || '["7日以内","1か月以内","3か月以内"]');
+let categories = JSON.parse(localStorage.getItem("categories") || JSON.stringify([
+  { name: "7日以内", days: 7 },
+  { name: "1か月以内", days: 30 },
+  { name: "3か月以内", days: 90 }
+]));
 let editingIndex = null;
 
 function saveAll() {
@@ -157,30 +164,46 @@ function formatDate(d) {
 }
 
 function render() {
-  const grid = document.getElementById("taskGrid");
-  grid.innerHTML = "";
+  const dashboard = document.getElementById("dashboard");
+  dashboard.innerHTML = "";
   const now = new Date();
 
-  tasks.forEach((t, i) => {
-    const diff = (now - new Date(t.last)) / 86400000;
-    const div = document.createElement("div");
-    div.className = "task" + (diff > 7 ? " overdue" : "");
+  categories.forEach(cat => {
+    const relatedTasks = tasks.filter(t => t.category === cat.name);
+    if (relatedTasks.length === 0) return;
 
-    div.innerHTML = `
-      <button class="edit-btn" onclick="openEdit(${i})">⋮</button>
-      <div class="task-name">${t.name}</div>
-      <div class="task-date">${formatDate(t.last)}</div>
-    `;
+    const section = document.createElement("div");
+    section.className = "category-section";
 
-    div.onclick = e => {
-      if (e.target.classList.contains("edit-btn")) return;
-      t.last = new Date().toISOString();
-      cheer();
-      saveAll();
-      render();
-    };
+    section.innerHTML = `<div class="category-title">${cat.name}</div>`;
 
-    grid.appendChild(div);
+    const grid = document.createElement("div");
+    grid.className = "taskGrid";
+
+    relatedTasks.forEach((t, i) => {
+      const diff = (now - new Date(t.last)) / 86400000;
+      const div = document.createElement("div");
+      div.className = "task" + (diff > cat.days ? " overdue" : "");
+
+      div.innerHTML = `
+        <button class="edit-btn" onclick="openEdit(${tasks.indexOf(t)})">⋮</button>
+        <div class="task-name">${t.name}</div>
+        <div class="task-date">${formatDate(t.last)}</div>
+      `;
+
+      div.onclick = e => {
+        if (e.target.classList.contains("edit-btn")) return;
+        t.last = new Date().toISOString();
+        cheer();
+        saveAll();
+        render();
+      };
+
+      grid.appendChild(div);
+    });
+
+    section.appendChild(grid);
+    dashboard.appendChild(section);
   });
 
   updateBear();
@@ -190,7 +213,7 @@ function openAdd() {
   editingIndex = null;
   nameInput.value = "";
   memoInput.value = "";
-  renderCategoryButtons(categories[0]);
+  renderCategoryButtons(categories[0].name);
   openModal();
 }
 
@@ -204,15 +227,14 @@ function openEdit(i) {
 }
 
 function renderCategoryButtons(selected) {
-  const area = document.getElementById("categoryArea");
-  area.innerHTML = "";
+  categoryArea.innerHTML = "";
   categories.forEach(c => {
     const b = document.createElement("button");
-    b.textContent = c;
+    b.textContent = c.name;
     b.className = "category-btn";
-    if (c === selected) b.style.background = "#ccc";
-    b.onclick = () => renderCategoryButtons(c);
-    area.appendChild(b);
+    if (c.name === selected) b.style.background = "#ccc";
+    b.onclick = () => renderCategoryButtons(c.name);
+    categoryArea.appendChild(b);
   });
 }
 
@@ -220,8 +242,9 @@ function saveTask() {
   const name = nameInput.value.trim();
   if (!name) return;
 
-  const category = [...document.querySelectorAll(".category-btn")]
-    .find(b => b.style.background)?.textContent || categories[0];
+  const category =
+    [...document.querySelectorAll(".category-btn")]
+      .find(b => b.style.background)?.textContent || categories[0].name;
 
   const memo = memoInput.value;
 
@@ -245,21 +268,17 @@ function deleteTask() {
   }
 }
 
-function openModal() {
-  modal.style.display = "flex";
-}
-
-function closeModal() {
-  modal.style.display = "none";
-}
-
 function addCategory() {
-  const c = prompt("分類名");
-  if (c) {
-    categories.push(c);
-    saveAll();
-  }
+  const name = prompt("分類名");
+  if (!name) return;
+  const days = Number(prompt("何日以内？"));
+  if (!days) return;
+  categories.push({ name, days });
+  saveAll();
 }
+
+function openModal() { modal.style.display = "flex"; }
+function closeModal() { modal.style.display = "none"; }
 
 function cheer() {
   const msgs = ["えらい！","いいね！","その調子！","最高！"];
