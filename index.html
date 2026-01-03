@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>家事ダッシュボード</title>
 
 <style>
@@ -11,16 +11,15 @@ body {
   margin: 8px;
 }
 
+h3 { margin-bottom: 4px; }
+
 button {
   padding: 6px 10px;
-  margin: 4px;
+  margin: 4px 4px 8px 0;
   border-radius: 6px;
   border: 1px solid #ccc;
-}
-
-.small {
   font-size: 12px;
-  opacity: 0.6;
+  background: #f2f2f2;
 }
 
 .grid {
@@ -32,27 +31,32 @@ button {
 .icon {
   border: 1px solid #333;
   padding: 6px;
-  text-align: center;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11px;
+  text-align: center;
   user-select: none;
 }
 
-.icon.black {
+.black {
   background: black;
   color: white;
 }
 
-.icon.red {
+.red {
   background: red;
   color: white;
+}
+
+.small {
+  font-size: 10px;
+  opacity: .6;
 }
 
 .modal {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.4);
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
 }
@@ -63,6 +67,15 @@ button {
   width: 90%;
   border-radius: 8px;
 }
+
+#bear {
+  margin-top: 16px;
+  text-align: center;
+}
+#bear img {
+  width: 90%;
+  max-width: 300px;
+}
 </style>
 </head>
 
@@ -70,40 +83,45 @@ button {
 
 <h3>家事ダッシュボード</h3>
 
-<button id="addTask" class="small">家事を追加</button>
-<button id="addCategory" class="small">分類を追加</button>
+<button id="btnAddTask">家事を追加</button>
+<button id="btnAddCategory">分類を追加</button>
 
-<div id="tasks"></div>
+<div id="taskArea"></div>
 
-<!-- モーダル -->
-<div id="modal" class="modal" style="display:none">
+<div id="bear">
+  <img id="bearImg" src="bear_normal.png">
+</div>
+
+<div id="modal" class="modal">
   <div class="modal-inner" id="modalInner"></div>
 </div>
 
 <script>
-const store = {
+const state = {
   tasks: JSON.parse(localStorage.getItem("tasks") || "[]"),
   categories: JSON.parse(localStorage.getItem("categories") || JSON.stringify([
-    { id:"7", name:"7日以内", days:7 },
-    { id:"30", name:"1ヶ月以内", days:30 },
-    { id:"90", name:"3ヶ月以内", days:90 }
+    {id:"7", name:"7日以内", days:7},
+    {id:"30", name:"1ヶ月以内", days:30},
+    {id:"90", name:"3ヶ月以内", days:90}
   ]))
 };
 
 function save() {
-  localStorage.setItem("tasks", JSON.stringify(store.tasks));
-  localStorage.setItem("categories", JSON.stringify(store.categories));
+  localStorage.setItem("tasks", JSON.stringify(state.tasks));
+  localStorage.setItem("categories", JSON.stringify(state.categories));
 }
 
-function daysAgo(date) {
+function daysFrom(date) {
   return Math.floor((Date.now() - new Date(date)) / 86400000);
 }
 
 function render() {
-  const area = document.getElementById("tasks");
+  const area = document.getElementById("taskArea");
   area.innerHTML = "";
 
-  store.categories.forEach(cat => {
+  let doneCount = 0;
+
+  state.categories.forEach(cat => {
     const h = document.createElement("h4");
     h.textContent = cat.name;
     area.appendChild(h);
@@ -111,11 +129,15 @@ function render() {
     const g = document.createElement("div");
     g.className = "grid";
 
-    store.tasks.filter(t => t.categoryId === cat.id).forEach(t => {
-      const d = daysAgo(t.lastDone);
+    state.tasks.filter(t => t.categoryId === cat.id).forEach(t => {
+      const d = daysFrom(t.lastDone);
       const el = document.createElement("div");
       el.className = "icon";
-      if (d <= cat.days) el.classList.add("black");
+
+      if (d <= cat.days) {
+        el.classList.add("black");
+        doneCount++;
+      }
       if (d > cat.days + 7) el.classList.add("red");
 
       el.innerHTML = `
@@ -124,12 +146,8 @@ function render() {
       `;
 
       let timer;
-      el.ontouchstart = () => {
-        timer = setTimeout(() => editTask(t), 600);
-      };
-      el.ontouchend = () => {
-        clearTimeout(timer);
-      };
+      el.ontouchstart = () => timer = setTimeout(()=>editTask(t.id),600);
+      el.ontouchend = () => clearTimeout(timer);
 
       el.onclick = () => {
         t.lastDone = new Date().toISOString().slice(0,10);
@@ -141,18 +159,76 @@ function render() {
 
     area.appendChild(g);
   });
+
+  updateBear(doneCount);
+}
+
+function updateBear(done) {
+  const total = state.tasks.length || 1;
+  const rate = done / total * 100;
+  const img = document.getElementById("bearImg");
+
+  if (rate <= 30) img.src = "bear_sad.png";
+  else if (rate <= 70) img.src = "bear_normal.png";
+  else img.src = "bear_happy.png";
 }
 
 function showModal(html) {
   modalInner.innerHTML = html;
   modal.style.display = "flex";
 }
-
 function closeModal() {
   modal.style.display = "none";
 }
 
-function addCategory() {
+function addTask() {
+  showModal(`
+    <h4>家事を追加</h4>
+    <input id="tname" placeholder="家事名"><br><br>
+    ${state.categories.map(c=>`<button onclick="selectCat('${c.id}')">${c.name}</button>`).join("")}
+    <input type="hidden" id="cat"><br><br>
+    <button onclick="saveTask()">保存</button>
+    <button onclick="closeModal()">キャンセル</button>
+  `);
+}
+
+function selectCat(id){ document.getElementById("cat").value=id; }
+
+function saveTask() {
+  state.tasks.push({
+    id: Date.now().toString(),
+    title: tname.value,
+    categoryId: cat.value,
+    lastDone: new Date().toISOString().slice(0,10),
+    memo:""
+  });
+  save(); closeModal(); render();
+}
+
+function editTask(id) {
+  const t = state.tasks.find(x=>x.id===id);
+  showModal(`
+    <h4>編集</h4>
+    <input id="ename" value="${t.title}"><br><br>
+    <textarea id="ememo" placeholder="メモ">${t.memo||""}</textarea><br><br>
+    <button onclick="updateTask('${id}')">保存</button>
+    <button onclick="deleteTask('${id}')">削除</button>
+  `);
+}
+
+function updateTask(id){
+  const t = state.tasks.find(x=>x.id===id);
+  t.title = ename.value;
+  t.memo = ememo.value;
+  save(); closeModal(); render();
+}
+
+function deleteTask(id){
+  state.tasks = state.tasks.filter(x=>x.id!==id);
+  save(); closeModal(); render();
+}
+
+function addCategory(){
   showModal(`
     <h4>分類を追加</h4>
     <input id="cname" placeholder="分類名"><br><br>
@@ -162,8 +238,8 @@ function addCategory() {
   `);
 }
 
-function saveCategory() {
-  store.categories.push({
+function saveCategory(){
+  state.categories.push({
     id: Date.now().toString(),
     name: cname.value,
     days: Number(cdays.value)
@@ -171,59 +247,9 @@ function saveCategory() {
   save(); closeModal(); render();
 }
 
-function addTask() {
-  showModal(`
-    <h4>家事を追加</h4>
-    <input id="tname" placeholder="家事名"><br><br>
-    ${store.categories.map(c =>
-      `<button onclick="selectCat('${c.id}')">${c.name}</button>`
-    ).join("")}
-    <input type="hidden" id="cat">
-    <br><br>
-    <button onclick="saveTask()">保存</button>
-    <button onclick="closeModal()">キャンセル</button>
-  `);
-}
+btnAddTask.onclick = addTask;
+btnAddCategory.onclick = addCategory;
 
-function selectCat(id) {
-  cat.value = id;
-}
-
-function saveTask() {
-  store.tasks.push({
-    id: Date.now().toString(),
-    title: tname.value,
-    categoryId: cat.value,
-    lastDone: new Date().toISOString().slice(0,10),
-    memo: ""
-  });
-  save(); closeModal(); render();
-}
-
-function editTask(t) {
-  showModal(`
-    <h4>編集</h4>
-    <input id="ename" value="${t.title}"><br><br>
-    <textarea id="ememo" placeholder="メモ">${t.memo || ""}</textarea><br><br>
-    <button onclick="updateTask('${t.id}')">保存</button>
-    <button onclick="deleteTask('${t.id}')">削除</button>
-  `);
-}
-
-function updateTask(id) {
-  const t = store.tasks.find(x => x.id === id);
-  t.title = ename.value;
-  t.memo = ememo.value;
-  save(); closeModal(); render();
-}
-
-function deleteTask(id) {
-  store.tasks = store.tasks.filter(x => x.id !== id);
-  save(); closeModal(); render();
-}
-
-addTask.onclick = addTask;
-addCategory.onclick = addCategory;
 render();
 </script>
 
