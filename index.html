@@ -1,228 +1,89 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>家事ダッシュボード</title>
 
 <style>
 body {
-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-background: #f2f2f7;
-margin: 0;
-padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 8px;
 }
 
-/* 見出し */
-h1 { font-size: 18px; }
-h2 { font-size: 14px; margin-top: 16px; color: #555; }
+button {
+  padding: 6px 10px;
+  margin: 4px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
 
-/* グリッド（iPhone優先） */
+.small {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
 .grid {
-display: grid;
-grid-template-columns: repeat(4, 1fr);
-gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
 }
 
-/* 家事アイコン */
-.chore {
-background: #fff;
-border-radius: 8px;
-padding: 6px 4px;
-text-align: center;
-box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-font-size: 11px;
-user-select: none;
+.icon {
+  border: 1px solid #333;
+  padding: 6px;
+  text-align: center;
+  border-radius: 6px;
+  font-size: 12px;
+  user-select: none;
 }
 
-.chore.done {
-background: #1c1c1e;
-color: #fff;
+.icon.black {
+  background: black;
+  color: white;
 }
 
-.chore.overdue {
-background: #ff3b30;
-color: #fff;
+.icon.red {
+  background: red;
+  color: white;
 }
 
-/* 追加ボタン */
-.add-button {
-margin: 16px 0;
-padding: 8px;
-text-align: center;
-background: #e5e5ea;
-color: #555;
-border-radius: 8px;
-font-size: 12px;
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* ===== クマ表示エリア ===== */
-#bear-area {
-margin: 24px 0 8px;
-text-align: center;
-}
-
-#bear-area img {
-width: 60%;
-max-width: 280px;
+.modal-inner {
+  background: white;
+  padding: 12px;
+  width: 90%;
+  border-radius: 8px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>家事ダッシュボード</h1>
+<h3>家事ダッシュボード</h3>
 
-<div id="app"></div>
+<button id="addTask" class="small">家事を追加</button>
+<button id="addCategory" class="small">分類を追加</button>
 
-<div class="add-button" onclick="addChore()">＋ 家事を追加</div>
+<div id="tasks"></div>
 
-<!-- クマ -->
-<div id="bear-area">
-<img id="bear-image" src="">
+<!-- モーダル -->
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-inner" id="modalInner"></div>
 </div>
 
 <script>
-const groups = [
-{ title: "7日以内", days: 7 },
-{ title: "1ヶ月以内", days: 30 },
-{ title: "3ヶ月以内", days: 90 }
-];
-
-let chores = JSON.parse(localStorage.getItem("chores")) || [];
-let pressTimer = null;
-
-/* 危険度 */
-function getDangerScore(chore) {
-if (!chore.lastDone) return 3;
-
-const now = new Date();
-const last = new Date(chore.lastDone);
-const limit = new Date(last);
-limit.setDate(limit.getDate() + groups[chore.group].days);
-
-if (now <= limit) return 2;
-
-const overdueDays = Math.floor((now - limit) / 86400000);
-if (overdueDays >= 7) return 0;
-
-return 1;
-}
-
-function getStatus(chore) {
-const s = getDangerScore(chore);
-if (s === 0) return "overdue";
-if (s === 2) return "done";
-return "none";
-}
-
-function formatDate(dateString) {
-if (!dateString) return "未実施";
-const d = new Date(dateString);
-return `${d.getMonth()+1}/${d.getDate()}`;
-}
-
-/* ===== クマ更新 ===== */
-function updateBear() {
-const total = chores.length;
-if (total === 0) return;
-
-const doneCount = chores.filter(c => getDangerScore(c) === 2).length;
-const percent = Math.round((doneCount / total) * 100);
-
-const img = document.getElementById("bear-image");
-
-if (percent <= 30) img.src = "bear_sad.png";
-else if (percent <= 70) img.src = "bear_normal.png";
-else img.src = "bear_happy.png";
-}
-
-/* 描画 */
-function render() {
-const app = document.getElementById("app");
-app.innerHTML = "";
-
-groups.forEach((group, gIndex) => {
-const h2 = document.createElement("h2");
-h2.textContent = group.title;
-app.appendChild(h2);
-
-const grid = document.createElement("div");
-grid.className = "grid";
-
-chores
-.map((c, i) => ({ ...c, index: i }))
-.filter(c => c.group === gIndex)
-.sort((a, b) => getDangerScore(a) - getDangerScore(b))
-.forEach(item => {
-const div = document.createElement("div");
-const status = getStatus(item);
-
-div.className = "chore";
-if (status === "done") div.classList.add("done");
-if (status === "overdue") div.classList.add("overdue");
-
-div.innerHTML = `
-<div>${item.name}</div>
-<div style="font-size:10px;opacity:0.8">${formatDate(item.lastDone)}</div>
-`;
-
-div.onclick = () => {
-chores[item.index].lastDone = new Date().toISOString();
-save();
-};
-
-div.ontouchstart = () => {
-pressTimer = setTimeout(() => openEditMenu(item.index), 800);
-};
-div.ontouchend = () => clearTimeout(pressTimer);
-
-grid.appendChild(div);
-});
-
-app.appendChild(grid);
-});
-
-updateBear();
-}
-
-/* 編集 */
-function openEditMenu(index) {
-const c = prompt("編集\n1:名前変更\n2:グループ変更\n3:削除");
-if (c === "1") {
-const n = prompt("新しい名前", chores[index].name);
-if (n) chores[index].name = n;
-}
-if (c === "2") {
-const g = prompt("0:7日 1:1ヶ月 2:3ヶ月");
-if (["0","1","2"].includes(g)) chores[index].group = Number(g);
-}
-if (c === "3") {
-if (!confirm("削除しますか？")) return;
-chores.splice(index, 1);
-}
-save();
-}
-
-/* 追加 */
-function addChore() {
-const name = prompt("家事名");
-if (!name) return;
-
-const g = prompt("0:7日 1:1ヶ月 2:3ヶ月");
-if (!["0","1","2"].includes(g)) return;
-
-chores.push({ name, group: Number(g), lastDone: null });
-save();
-}
-
-function save() {
-localStorage.setItem("chores", JSON.stringify(chores));
-render();
-}
-
-render();
-</script>
-
-</body>
-</html>
+const store = {
+  tasks: JSON.parse(localStorage.getItem("tasks") || "[]"),
+  categories: JSON.parse(localStorage.getItem("categories") || JSON.stringify([
+    { id:"7", name:"7日以内", days:7 },
+    { id:"30", name:"1ヶ月以内", days:30 },
+    { id:"90", name:"3ヶ月以内", d
