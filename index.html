@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>家事ダッシュボード</title>
 
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#ffffff" />
+<link rel="manifest" href="manifest.json">
 
 <style>
 body {
@@ -18,13 +17,11 @@ body {
 
 h1 {
   font-size: 18px;
-  margin-bottom: 8px;
 }
 
 button {
   padding: 6px 10px;
   font-size: 14px;
-  margin-right: 6px;
 }
 
 #taskGrid {
@@ -39,16 +36,16 @@ button {
   border-radius: 10px;
   padding: 6px;
   text-align: center;
-  position: relative;
   font-size: 12px;
+  position: relative;
 }
 
 .task.overdue {
   background: #ffd6d6;
 }
 
-.task-icon {
-  font-size: 22px;
+.task-box {
+  font-size: 20px;
 }
 
 .task-date {
@@ -60,20 +57,47 @@ button {
   position: absolute;
   top: 4px;
   right: 4px;
-  font-size: 14px;
-  background: none;
   border: none;
-  cursor: pointer;
+  background: none;
+  font-size: 16px;
+}
+
+/* モーダル */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 14px;
+  width: 90%;
+  border-radius: 10px;
+}
+
+.modal-content input,
+.modal-content textarea {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.category-btn {
+  margin: 4px 4px 4px 0;
 }
 
 /* クマ */
 #bear {
   position: fixed;
-  top: 10px;
-  right: 10px;
-  width: 80px;
+  top: 8px;
+  right: 8px;
+  width: 70px;
   text-align: center;
-  z-index: 1000;
 }
 
 #bear img {
@@ -82,10 +106,9 @@ button {
 
 #bearComment {
   font-size: 12px;
-  background: rgba(255,255,255,0.9);
+  background: #fff;
   border-radius: 6px;
   padding: 4px;
-  margin-top: 2px;
 }
 </style>
 </head>
@@ -93,57 +116,66 @@ button {
 <body>
 
 <h1>家事ダッシュボード</h1>
-
-<button onclick="addTask()">家事を追加</button>
+<button onclick="openAdd()">家事を追加</button>
 <button onclick="addCategory()">分類を追加</button>
 
 <div id="taskGrid"></div>
 
 <!-- クマ -->
 <div id="bear">
-  <img id="bearImg" src="bear_normal.png" />
+  <img id="bearImg" src="bear_normal.png">
   <div id="bearComment">がんばろう！</div>
+</div>
+
+<!-- モーダル -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <input id="nameInput" placeholder="家事名">
+    <div id="categoryArea"></div>
+    <textarea id="memoInput" placeholder="メモ（任意）"></textarea>
+    <button onclick="saveTask()">保存</button>
+    <button onclick="deleteTask()">削除</button>
+    <button onclick="closeModal()">閉じる</button>
+  </div>
 </div>
 
 <script>
 let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-let categories = JSON.parse(localStorage.getItem("categories") || '["7日以内","1か月以内"]');
+let categories = JSON.parse(localStorage.getItem("categories") || '["7日以内","1か月以内","3か月以内"]');
+let editingIndex = null;
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return `${String(d.getFullYear()).slice(2)}/${d.getMonth()+1}/${d.getDate()}`;
-}
-
-function save() {
+function saveAll() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
   localStorage.setItem("categories", JSON.stringify(categories));
+}
+
+function formatDate(d) {
+  d = new Date(d);
+  return `${String(d.getFullYear()).slice(2)}/${d.getMonth()+1}/${d.getDate()}`;
 }
 
 function render() {
   const grid = document.getElementById("taskGrid");
   grid.innerHTML = "";
-
   const now = new Date();
 
   tasks.forEach((t, i) => {
-    const last = new Date(t.last);
-    const diff = Math.floor((now - last) / 86400000);
-
+    const diff = (now - new Date(t.last)) / 86400000;
     const div = document.createElement("div");
     div.className = "task" + (diff > 7 ? " overdue" : "");
 
     div.innerHTML = `
-      <button class="edit-btn" onclick="editTask(${i})">⋮</button>
-      <div class="task-icon">${t.icon}</div>
+      <button class="edit-btn" onclick="openEdit(${i})">⋮</button>
+      <div class="task-box">□</div>
       <div>${t.name}</div>
       <div class="task-date">${formatDate(t.last)}</div>
     `;
 
-    div.onclick = (e) => {
+    div.onclick = e => {
       if (e.target.classList.contains("edit-btn")) return;
       t.last = new Date().toISOString();
-      showCheer();
-      save();
+      cheer();
+      saveAll();
       render();
     };
 
@@ -153,79 +185,91 @@ function render() {
   updateBear();
 }
 
-function addTask() {
-  const name = prompt("家事名");
+function openAdd() {
+  editingIndex = null;
+  document.getElementById("nameInput").value = "";
+  document.getElementById("memoInput").value = "";
+  renderCategoryButtons(categories[0]);
+  openModal();
+}
+
+function openEdit(i) {
+  editingIndex = i;
+  const t = tasks[i];
+  document.getElementById("nameInput").value = t.name;
+  document.getElementById("memoInput").value = t.memo || "";
+  renderCategoryButtons(t.category);
+  openModal();
+}
+
+function renderCategoryButtons(selected) {
+  const area = document.getElementById("categoryArea");
+  area.innerHTML = "";
+  categories.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c;
+    b.className = "category-btn";
+    if (c === selected) b.style.background = "#ccc";
+    b.onclick = () => renderCategoryButtons(c);
+    area.appendChild(b);
+  });
+}
+
+function saveTask() {
+  const name = nameInput.value.trim();
   if (!name) return;
 
-  const icon = prompt("絵文字（例：🧹）") || "🧹";
-  const cat = categories[0];
+  const category = [...document.querySelectorAll(".category-btn")]
+    .find(b => b.style.background)?.textContent || categories[0];
 
-  tasks.push({
-    name,
-    icon,
-    category: cat,
-    last: new Date().toISOString(),
-    memo: ""
-  });
+  const memo = memoInput.value;
 
-  save();
+  if (editingIndex === null) {
+    tasks.push({ name, category, memo, last: new Date().toISOString() });
+  } else {
+    Object.assign(tasks[editingIndex], { name, category, memo });
+  }
+
+  saveAll();
+  closeModal();
   render();
 }
 
-function editTask(i) {
-  const t = tasks[i];
-  const action = prompt(
-`1: 名前変更
-2: メモ編集
-3: 削除`
-  );
-
-  if (action === "1") {
-    const n = prompt("新しい名前", t.name);
-    if (n) t.name = n;
-  } else if (action === "2") {
-    t.memo = prompt("メモ", t.memo) || "";
-  } else if (action === "3") {
-    if (confirm("削除しますか？")) tasks.splice(i, 1);
+function deleteTask() {
+  if (editingIndex !== null && confirm("削除しますか？")) {
+    tasks.splice(editingIndex, 1);
+    saveAll();
+    closeModal();
+    render();
   }
+}
 
-  save();
-  render();
+function openModal() {
+  document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
 }
 
 function addCategory() {
   const c = prompt("分類名");
-  if (!c) return;
-  categories.push(c);
-  save();
+  if (c) {
+    categories.push(c);
+    saveAll();
+  }
+}
+
+function cheer() {
+  const msgs = ["えらい！","いいね！","その調子！","最高！"];
+  bearComment.textContent = msgs[Math.floor(Math.random()*msgs.length)];
 }
 
 function updateBear() {
-  const total = tasks.length;
-  if (total === 0) return;
-
-  const done = tasks.filter(t => {
-    const diff = (new Date() - new Date(t.last)) / 86400000;
-    return diff < 1;
-  }).length;
-
-  const rate = (done / total) * 100;
-  const img = document.getElementById("bearImg");
-
-  if (rate <= 30) img.src = "bear_cry.png";
-  else if (rate <= 70) img.src = "bear_normal.png";
-  else img.src = "bear_happy.png";
-}
-
-function showCheer() {
-  const comments = [
-    "えらい！",
-    "その調子！",
-    "よくやったね！",
-    "最高！"
-  ];
-  document.getElementById("bearComment").textContent =
-    comments[Math.floor(Math.random() * comments.length)];
+  if (!tasks.length) return;
+  const done = tasks.filter(t => (new Date()-new Date(t.last))/86400000 < 1).length;
+  const rate = done / tasks.length * 100;
+  bearImg.src = rate < 30 ? "bear_cry.png" : rate < 70 ? "bear_normal.png" : "bear_happy.png";
 }
 
 render();
