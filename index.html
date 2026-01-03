@@ -1,298 +1,224 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>家事ダッシュボード</title>
 
-<link rel="manifest" href="manifest.json">
+<!-- フォント -->
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
 body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 0;
-  padding: 12px;
-  background: #f7f7f7;
+  font-family: 'Zen Maru Gothic', sans-serif;
+  background: linear-gradient(#f7f8fa, #eef1f5);
+  color: #333;
 }
 
-h1 { font-size: 18px; }
-
-button {
+/* ===== クマ ===== */
+#bear {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  width: 90px;
+  z-index: 100;
+}
+#bearComment {
+  position: fixed;
+  top: 100px;
+  right: 10px;
+  background: white;
   padding: 6px 10px;
-  font-size: 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  display: none;
 }
 
-.category-section {
-  margin-top: 16px;
-}
-
-.category-title {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
-.taskGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 8px;
-}
-
-.task {
-  background: #fff;
-  border-radius: 10px;
-  padding: 8px 6px;
-  text-align: center;
-  font-size: 13px;
-  position: relative;
-}
-
-.task.overdue {
-  background: #ffd6d6;
-}
-
-.task-name {
+/* ===== ヘッダ ===== */
+header {
+  padding: 16px;
+  font-size: 20px;
   font-weight: 500;
 }
 
-.task-date {
-  font-size: 11px;
-  color: #666;
+/* ===== 分類 ===== */
+.section {
+  padding: 0 12px 20px;
 }
-
-.edit-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  border: none;
-  background: none;
-  font-size: 16px;
-}
-
-/* モーダル */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-content {
-  background: #fff;
-  padding: 14px;
-  width: 90%;
-  border-radius: 10px;
-}
-
-.modal-content input,
-.modal-content textarea {
-  width: 100%;
-  margin-bottom: 8px;
+.section h2 {
   font-size: 14px;
+  color: #666;
+  margin: 10px 0;
 }
 
-.category-btn {
-  margin: 4px 4px 4px 0;
+/* ===== カード ===== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
 }
 
-/* クマ */
-#bear {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  width: 70px;
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 10px 6px;
   text-align: center;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  font-size: 13px;
+  transition: transform 0.15s ease, background 0.3s;
+  user-select: none;
 }
 
-#bear img { width: 100%; }
+.card:active {
+  transform: scale(0.92);
+}
 
-#bearComment {
+/* 状態色 */
+.normal { background: white; }
+.soon { background: #fff2cc; }
+.expired { background: #ffd6d6; }
+.done { background: #666; color: white; }
+
+/* 日付 */
+.date {
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+/* ===== ボタン ===== */
+.buttons {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+button {
+  border: none;
+  border-radius: 20px;
+  padding: 6px 14px;
   font-size: 12px;
-  background: #fff;
-  border-radius: 6px;
-  padding: 4px;
+  background: #ccc;
+  color: #333;
 }
 </style>
 </head>
 
 <body>
 
-<h1>家事ダッシュボード</h1>
-<button onclick="openAdd()">家事を追加</button>
-<button onclick="addCategory()">分類を追加</button>
+<img id="bear" src="bear_normal.png">
+<div id="bearComment"></div>
+
+<header>家事ダッシュボード</header>
 
 <div id="dashboard"></div>
 
-<!-- クマ -->
-<div id="bear">
-  <img id="bearImg" src="bear_normal.png">
-  <div id="bearComment">がんばろう！</div>
-</div>
-
-<!-- モーダル -->
-<div class="modal" id="modal">
-  <div class="modal-content">
-    <input id="nameInput" placeholder="家事名">
-    <div id="categoryArea"></div>
-    <textarea id="memoInput" placeholder="メモ（任意）"></textarea>
-    <button onclick="saveTask()">保存</button>
-    <button onclick="deleteTask()">削除</button>
-    <button onclick="closeModal()">閉じる</button>
-  </div>
+<div class="buttons">
+  <button onclick="addTask()">家事を追加</button>
+  <button onclick="addCategory()">分類を追加</button>
 </div>
 
 <script>
-let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-let categories = JSON.parse(localStorage.getItem("categories") || JSON.stringify([
+const comments = [
+  "えらい！",
+  "未来の自分が助かってるよ",
+  "一歩前進！",
+  "今日はここまででもOK",
+  "ちゃんとやっててすごい"
+];
+
+let categories = JSON.parse(localStorage.getItem("categories")) || [
   { name: "7日以内", days: 7 },
   { name: "1か月以内", days: 30 },
   { name: "3か月以内", days: 90 }
-]));
-let editingIndex = null;
+];
 
-function saveAll() {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-  localStorage.setItem("categories", JSON.stringify(categories));
-}
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
 function formatDate(d) {
-  d = new Date(d);
-  return `${String(d.getFullYear()).slice(2)}/${d.getMonth()+1}/${d.getDate()}`;
+  return `${d.getFullYear().toString().slice(2)}/${d.getMonth()+1}/${d.getDate()}`;
 }
 
 function render() {
-  const dashboard = document.getElementById("dashboard");
-  dashboard.innerHTML = "";
-  const now = new Date();
+  const dash = document.getElementById("dashboard");
+  dash.innerHTML = "";
 
   categories.forEach(cat => {
-    const relatedTasks = tasks.filter(t => t.category === cat.name);
-    if (relatedTasks.length === 0) return;
-
-    const section = document.createElement("div");
-    section.className = "category-section";
-
-    section.innerHTML = `<div class="category-title">${cat.name}</div>`;
-
+    const sec = document.createElement("div");
+    sec.className = "section";
+    sec.innerHTML = `<h2>${cat.name}</h2>`;
     const grid = document.createElement("div");
-    grid.className = "taskGrid";
+    grid.className = "grid";
 
-    relatedTasks.forEach((t, i) => {
-      const diff = (now - new Date(t.last)) / 86400000;
-      const div = document.createElement("div");
-      div.className = "task" + (diff > cat.days ? " overdue" : "");
+    tasks.filter(t => t.category === cat.name).forEach(task => {
+      const card = document.createElement("div");
+      card.className = "card";
 
-      div.innerHTML = `
-        <button class="edit-btn" onclick="openEdit(${tasks.indexOf(t)})">⋮</button>
-        <div class="task-name">${t.name}</div>
-        <div class="task-date">${formatDate(t.last)}</div>
+      const last = new Date(task.last);
+      const diff = (Date.now() - last) / 86400000;
+
+      if (task.justDone) card.classList.add("done");
+      else if (diff > cat.days + 7) card.classList.add("expired");
+      else if (diff > cat.days) card.classList.add("soon");
+      else card.classList.add("normal");
+
+      card.innerHTML = `
+        ${task.name}
+        <div class="date">${formatDate(last)}</div>
       `;
 
-      div.onclick = e => {
-        if (e.target.classList.contains("edit-btn")) return;
-        t.last = new Date().toISOString();
-        cheer();
-        saveAll();
-        render();
-      };
-
-      grid.appendChild(div);
+      card.onclick = () => complete(task);
+      grid.appendChild(card);
     });
 
-    section.appendChild(grid);
-    dashboard.appendChild(section);
+    sec.appendChild(grid);
+    dash.appendChild(sec);
   });
 
-  updateBear();
+  localStorage.setItem("tasks", JSON.stringify(tasks));
 }
 
-function openAdd() {
-  editingIndex = null;
-  nameInput.value = "";
-  memoInput.value = "";
-  renderCategoryButtons(categories[0].name);
-  openModal();
-}
+function complete(task) {
+  task.last = new Date().toISOString();
+  task.justDone = true;
 
-function openEdit(i) {
-  editingIndex = i;
-  const t = tasks[i];
-  nameInput.value = t.name;
-  memoInput.value = t.memo || "";
-  renderCategoryButtons(t.category);
-  openModal();
-}
+  showComment();
 
-function renderCategoryButtons(selected) {
-  categoryArea.innerHTML = "";
-  categories.forEach(c => {
-    const b = document.createElement("button");
-    b.textContent = c.name;
-    b.className = "category-btn";
-    if (c.name === selected) b.style.background = "#ccc";
-    b.onclick = () => renderCategoryButtons(c.name);
-    categoryArea.appendChild(b);
-  });
-}
+  setTimeout(() => {
+    task.justDone = false;
+    render();
+  }, 3000);
 
-function saveTask() {
-  const name = nameInput.value.trim();
-  if (!name) return;
-
-  const category =
-    [...document.querySelectorAll(".category-btn")]
-      .find(b => b.style.background)?.textContent || categories[0].name;
-
-  const memo = memoInput.value;
-
-  if (editingIndex === null) {
-    tasks.push({ name, category, memo, last: new Date().toISOString() });
-  } else {
-    Object.assign(tasks[editingIndex], { name, category, memo });
-  }
-
-  saveAll();
-  closeModal();
   render();
 }
 
-function deleteTask() {
-  if (editingIndex !== null && confirm("削除しますか？")) {
-    tasks.splice(editingIndex, 1);
-    saveAll();
-    closeModal();
-    render();
-  }
+function showComment() {
+  const c = document.getElementById("bearComment");
+  c.textContent = comments[Math.floor(Math.random()*comments.length)];
+  c.style.display = "block";
+  setTimeout(() => c.style.display = "none", 2000);
+}
+
+function addTask() {
+  const name = prompt("家事名");
+  if (!name) return;
+
+  const cat = prompt(categories.map(c => c.name).join("\n"));
+  tasks.push({ name, category: cat, last: new Date().toISOString() });
+  render();
 }
 
 function addCategory() {
   const name = prompt("分類名");
-  if (!name) return;
-  const days = Number(prompt("何日以内？"));
-  if (!days) return;
-  categories.push({ name, days });
-  saveAll();
-}
-
-function openModal() { modal.style.display = "flex"; }
-function closeModal() { modal.style.display = "none"; }
-
-function cheer() {
-  const msgs = ["えらい！","いいね！","その調子！","最高！"];
-  bearComment.textContent = msgs[Math.floor(Math.random()*msgs.length)];
-}
-
-function updateBear() {
-  if (!tasks.length) return;
-  const done = tasks.filter(t => (new Date()-new Date(t.last))/86400000 < 1).length;
-  const rate = done / tasks.length * 100;
-  bearImg.src =
-    rate < 30 ? "bear_cry.png" :
-    rate < 70 ? "bear_normal.png" :
-    "bear_happy.png";
+  const days = prompt("日数");
+  categories.push({ name, days: Number(days) });
+  localStorage.setItem("categories", JSON.stringify(categories));
+  render();
 }
 
 render();
