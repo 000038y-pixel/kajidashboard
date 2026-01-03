@@ -34,9 +34,9 @@ button {
 .task {
   background: #fff;
   border-radius: 10px;
-  padding: 6px;
+  padding: 8px 6px;
   text-align: center;
-  font-size: 12px;
+  font-size: 13px;
   position: relative;
 }
 
@@ -44,13 +44,15 @@ button {
   background: #ffd6d6;
 }
 
-.task-box {
-  font-size: 20px;
+.task-name {
+  font-weight: 500;
+  word-break: break-word;
 }
 
 .task-date {
   font-size: 11px;
   color: #666;
+  margin-top: 2px;
 }
 
 .edit-btn {
@@ -166,8 +168,7 @@ function render() {
 
     div.innerHTML = `
       <button class="edit-btn" onclick="openEdit(${i})">⋮</button>
-      <div class="task-box">□</div>
-      <div>${t.name}</div>
+      <div class="task-name">${t.name}</div>
       <div class="task-date">${formatDate(t.last)}</div>
     `;
 
@@ -187,8 +188,8 @@ function render() {
 
 function openAdd() {
   editingIndex = null;
-  document.getElementById("nameInput").value = "";
-  document.getElementById("memoInput").value = "";
+  nameInput.value = "";
+  memoInput.value = "";
   renderCategoryButtons(categories[0]);
   openModal();
 }
@@ -196,8 +197,8 @@ function openAdd() {
 function openEdit(i) {
   editingIndex = i;
   const t = tasks[i];
-  document.getElementById("nameInput").value = t.name;
-  document.getElementById("memoInput").value = t.memo || "";
+  nameInput.value = t.name;
+  memoInput.value = t.memo || "";
   renderCategoryButtons(t.category);
   openModal();
 }
@@ -245,11 +246,11 @@ function deleteTask() {
 }
 
 function openModal() {
-  document.getElementById("modal").style.display = "flex";
+  modal.style.display = "flex";
 }
 
 function closeModal() {
-  document.getElementById("modal").style.display = "none";
+  modal.style.display = "none";
 }
 
 function addCategory() {
@@ -269,7 +270,10 @@ function updateBear() {
   if (!tasks.length) return;
   const done = tasks.filter(t => (new Date()-new Date(t.last))/86400000 < 1).length;
   const rate = done / tasks.length * 100;
-  bearImg.src = rate < 30 ? "bear_cry.png" : rate < 70 ? "bear_normal.png" : "bear_happy.png";
+  bearImg.src =
+    rate < 30 ? "bear_cry.png" :
+    rate < 70 ? "bear_normal.png" :
+    "bear_happy.png";
 }
 
 render();
