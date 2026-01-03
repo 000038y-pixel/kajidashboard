@@ -6,144 +6,159 @@
 <title>家事ダッシュボード</title>
 
 <link rel="manifest" href="manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
-body {
-  font-family: 'Zen Maru Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
-  margin: 0;
-  padding: 12px;
-  background: linear-gradient(#f7f8fa, #eef1f5);
-  color: #333;
+:root{
+  --bg:#f6f7f5;
+  --card:#ffffff;
+  --done:#b0b0b0;
+  --text:#333;
+  --sub:#777;
+  --accent:#dcdcdc;
+  --danger1:#ffe5e5;
+  --danger2:#ffb3b3;
 }
 
-h1 {
-  font-size: 18px;
-  margin-bottom: 8px;
+body{
+  font-family:"Zen Maru Gothic",-apple-system,BlinkMacSystemFont,sans-serif;
+  margin:0;
+  padding:12px;
+  background:var(--bg);
+  color:var(--text);
 }
 
-button {
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: 16px;
-  border: none;
-  background: #ddd;
+h1{
+  font-size:18px;
+  margin:4px 0 10px;
 }
 
-/* ===== 分類 ===== */
-.category-section {
-  margin-top: 20px;
+button{
+  border:none;
+  border-radius:8px;
+  padding:6px 10px;
+  font-size:13px;
+  background:#eaeaea;
+  color:#333;
 }
 
-.category-title {
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  color: #555;
+button:active{
+  transform:scale(0.97);
 }
 
-/* ===== タスク ===== */
-.taskGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 10px;
+.category-section{
+  margin-top:16px;
 }
 
-.task {
-  background: #fff;
-  border-radius: 14px;
-  padding: 10px 6px;
-  text-align: center;
-  font-size: 13px;
-  position: relative;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-  transition: transform 0.15s ease, background 0.3s;
+.category-title{
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:6px;
 }
 
-.task:active {
-  transform: scale(0.94);
+.taskGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(70px,1fr));
+  gap:6px;
 }
 
-.task.overdue {
-  background: #ffd6d6;
+.task{
+  background:var(--card);
+  border-radius:12px;
+  padding:6px 4px;
+  text-align:center;
+  font-size:12px;
+  position:relative;
+  box-shadow:0 2px 6px rgba(0,0,0,0.06);
+  transition:transform .15s,background .2s;
 }
 
-.task-name {
-  font-weight: 500;
+.task:active{
+  transform:scale(0.95);
 }
 
-.task-date {
-  font-size: 11px;
-  color: #666;
-  margin-top: 2px;
+.task.done{
+  background:var(--done);
+  color:#fff;
 }
 
-/* 編集ボタン */
-.edit-btn {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  border: none;
-  background: none;
-  font-size: 18px;
-  color: #888;
+.task.overdue1{ background:var(--danger1); }
+.task.overdue2{ background:var(--danger2); }
+
+.task-name{
+  font-weight:500;
 }
 
-/* ===== モーダル ===== */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
+.task-date{
+  font-size:10px;
+  color:var(--sub);
 }
 
-.modal-content {
-  background: #fff;
-  padding: 16px;
-  width: 90%;
-  border-radius: 14px;
+.edit-btn{
+  position:absolute;
+  top:2px;
+  right:2px;
+  background:#f0f0f0;
+  border-radius:50%;
+  width:22px;
+  height:22px;
+  font-size:14px;
+  line-height:22px;
+}
+
+/* モーダル */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+
+.modal-content{
+  background:#fff;
+  padding:14px;
+  width:90%;
+  border-radius:14px;
 }
 
 .modal-content input,
-.modal-content textarea {
-  width: 100%;
-  margin-bottom: 10px;
-  font-size: 14px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  padding: 6px;
+.modal-content textarea{
+  width:100%;
+  margin-bottom:8px;
+  font-size:14px;
+  padding:6px;
 }
 
-.category-btn {
-  margin: 4px 4px 4px 0;
-  border-radius: 14px;
-  background: #eee;
+.category-btn{
+  margin:4px 4px 4px 0;
 }
 
-/* ===== クマ ===== */
-#bear {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  width: 72px;
-  text-align: center;
-  z-index: 1000;
+/* クマ */
+#bear{
+  position:fixed;
+  top:8px;
+  right:8px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  z-index:1500;
 }
 
-#bear img {
-  width: 100%;
+#bear img{
+  width:60px;
 }
 
-#bearComment {
-  font-size: 11px;
-  background: #fff;
-  border-radius: 8px;
-  padding: 4px 6px;
-  margin-top: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+#bearComment{
+  font-size:12px;
+  background:#fff;
+  border-radius:10px;
+  padding:6px 8px;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
 }
 </style>
 </head>
@@ -158,8 +173,8 @@ button {
 
 <!-- クマ -->
 <div id="bear">
-  <img id="bearImg" src="bear_normal.png">
   <div id="bearComment">がんばろう！</div>
+  <img id="bearImg" src="bear_normal.png">
 </div>
 
 <!-- モーダル -->
@@ -175,55 +190,55 @@ button {
 </div>
 
 <script>
-/* ===== ここから下は Version260103 の JS をそのまま ===== */
 let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
 let categories = JSON.parse(localStorage.getItem("categories") || JSON.stringify([
-  { name: "7日以内", days: 7 },
-  { name: "1か月以内", days: 30 },
-  { name: "3か月以内", days: 90 }
+  { name:"7日以内", days:7 },
+  { name:"1か月以内", days:30 },
+  { name:"3か月以内", days:90 }
 ]));
-let editingIndex = null;
+let editingIndex=null;
 
-function saveAll() {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-  localStorage.setItem("categories", JSON.stringify(categories));
+function saveAll(){
+  localStorage.setItem("tasks",JSON.stringify(tasks));
+  localStorage.setItem("categories",JSON.stringify(categories));
 }
 
-function formatDate(d) {
-  d = new Date(d);
+function formatDate(d){
+  d=new Date(d);
   return `${String(d.getFullYear()).slice(2)}/${d.getMonth()+1}/${d.getDate()}`;
 }
 
-function render() {
-  const dashboard = document.getElementById("dashboard");
-  dashboard.innerHTML = "";
-  const now = new Date();
+function render(){
+  dashboard.innerHTML="";
+  const now=new Date();
 
-  categories.forEach(cat => {
-    const relatedTasks = tasks.filter(t => t.category === cat.name);
-    if (relatedTasks.length === 0) return;
+  categories.forEach(cat=>{
+    const related=tasks.filter(t=>t.category===cat.name);
+    if(!related.length) return;
 
-    const section = document.createElement("div");
-    section.className = "category-section";
-    section.innerHTML = `<div class="category-title">${cat.name}</div>`;
+    const sec=document.createElement("div");
+    sec.className="category-section";
+    sec.innerHTML=`<div class="category-title">${cat.name}</div>`;
+    const grid=document.createElement("div");
+    grid.className="taskGrid";
 
-    const grid = document.createElement("div");
-    grid.className = "taskGrid";
+    related.forEach(t=>{
+      const diff=(now-new Date(t.last))/86400000;
+      const div=document.createElement("div");
+      div.className="task";
+      if(t.done) div.classList.add("done");
+      if(diff>cat.days) div.classList.add(diff>cat.days+7?"overdue2":"overdue1");
 
-    relatedTasks.forEach(t => {
-      const diff = (now - new Date(t.last)) / 86400000;
-      const div = document.createElement("div");
-      div.className = "task" + (diff > cat.days ? " overdue" : "");
-
-      div.innerHTML = `
+      div.innerHTML=`
         <button class="edit-btn" onclick="openEdit(${tasks.indexOf(t)})">⋮</button>
         <div class="task-name">${t.name}</div>
         <div class="task-date">${formatDate(t.last)}</div>
       `;
 
-      div.onclick = e => {
-        if (e.target.classList.contains("edit-btn")) return;
-        t.last = new Date().toISOString();
+      div.onclick=e=>{
+        if(e.target.classList.contains("edit-btn")) return;
+        t.last=new Date().toISOString();
+        t.done=true;
         cheer();
         saveAll();
         render();
@@ -232,97 +247,89 @@ function render() {
       grid.appendChild(div);
     });
 
-    section.appendChild(grid);
-    dashboard.appendChild(section);
+    sec.appendChild(grid);
+    dashboard.appendChild(sec);
   });
 
   updateBear();
 }
 
-function openAdd() {
-  editingIndex = null;
-  nameInput.value = "";
-  memoInput.value = "";
+function openAdd(){
+  editingIndex=null;
+  nameInput.value="";
+  memoInput.value="";
   renderCategoryButtons(categories[0].name);
   openModal();
 }
 
-function openEdit(i) {
-  editingIndex = i;
-  const t = tasks[i];
-  nameInput.value = t.name;
-  memoInput.value = t.memo || "";
+function openEdit(i){
+  editingIndex=i;
+  const t=tasks[i];
+  nameInput.value=t.name;
+  memoInput.value=t.memo||"";
   renderCategoryButtons(t.category);
   openModal();
 }
 
-function renderCategoryButtons(selected) {
-  categoryArea.innerHTML = "";
-  categories.forEach(c => {
-    const b = document.createElement("button");
-    b.textContent = c.name;
-    b.className = "category-btn";
-    if (c.name === selected) b.style.background = "#ccc";
-    b.onclick = () => renderCategoryButtons(c.name);
+function renderCategoryButtons(selected){
+  categoryArea.innerHTML="";
+  categories.forEach(c=>{
+    const b=document.createElement("button");
+    b.textContent=c.name;
+    b.className="category-btn";
+    if(c.name===selected) b.style.background="#ccc";
+    b.onclick=()=>renderCategoryButtons(c.name);
     categoryArea.appendChild(b);
   });
 }
 
-function saveTask() {
-  const name = nameInput.value.trim();
-  if (!name) return;
+function saveTask(){
+  const name=nameInput.value.trim();
+  if(!name) return;
 
-  const category =
-    [...document.querySelectorAll(".category-btn")]
-      .find(b => b.style.background)?.textContent || categories[0].name;
+  const category=[...document.querySelectorAll(".category-btn")]
+    .find(b=>b.style.background)?.textContent||categories[0].name;
 
-  const memo = memoInput.value;
+  const memo=memoInput.value;
 
-  if (editingIndex === null) {
-    tasks.push({ name, category, memo, last: new Date().toISOString() });
-  } else {
-    Object.assign(tasks[editingIndex], { name, category, memo });
+  if(editingIndex===null){
+    tasks.push({name,category,memo,last:new Date().toISOString(),done:false});
+  }else{
+    Object.assign(tasks[editingIndex],{name,category,memo});
   }
 
-  saveAll();
-  closeModal();
-  render();
+  saveAll();closeModal();render();
 }
 
-function deleteTask() {
-  if (editingIndex !== null && confirm("削除しますか？")) {
-    tasks.splice(editingIndex, 1);
-    saveAll();
-    closeModal();
-    render();
+function deleteTask(){
+  if(editingIndex!==null&&confirm("削除しますか？")){
+    tasks.splice(editingIndex,1);
+    saveAll();closeModal();render();
   }
 }
 
-function addCategory() {
-  const name = prompt("分類名");
-  if (!name) return;
-  const days = Number(prompt("何日以内？"));
-  if (!days) return;
-  categories.push({ name, days });
-  saveAll();
+function addCategory(){
+  const name=prompt("分類名");
+  if(!name) return;
+  const days=Number(prompt("何日以内？"));
+  if(!days) return;
+  categories.push({name,days});
+  saveAll();render();
 }
 
-function openModal() { modal.style.display = "flex"; }
-function closeModal() { modal.style.display = "none"; }
+function openModal(){ modal.style.display="flex"; }
+function closeModal(){ modal.style.display="none"; }
 
-function cheer() {
-  const msgs = ["えらい！","いいね！","その調子！","最高！"];
-  bearComment.textContent = msgs[Math.floor(Math.random()*msgs.length)];
+function cheer(){
+  const msgs=["えらい！","いいね！","その調子！","最高！"];
+  bearComment.textContent=msgs[Math.floor(Math.random()*msgs.length)];
 }
 
-function updateBear() {
-  if (!tasks.length) return;
-  const done = tasks.filter(t => (new Date()-new Date(t.last))/86400000 < 1).length;
-  const rate = done / tasks.length * 100;
-  bearImg.src =
-    rate < 30 ? "bear_cry.png" :
-    rate < 70 ? "bear_normal.png" :
-    "bear_happy.png";
+function updateBear(){
+  if(!tasks.length) return;
+  const done=tasks.filter(t=>t.done).length;
+  const rate=done/tasks.length*100;
+  bearImg.src=rate<30?"bear_cry.png":rate<70?"bear_normal.png":"bear_happy.png";
 }
 
 render();
