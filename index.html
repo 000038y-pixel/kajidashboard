@@ -86,4 +86,146 @@ const store = {
   categories: JSON.parse(localStorage.getItem("categories") || JSON.stringify([
     { id:"7", name:"7日以内", days:7 },
     { id:"30", name:"1ヶ月以内", days:30 },
-    { id:"90", name:"3ヶ月以内", d
+    { id:"90", name:"3ヶ月以内", days:90 }
+  ]))
+};
+
+function save() {
+  localStorage.setItem("tasks", JSON.stringify(store.tasks));
+  localStorage.setItem("categories", JSON.stringify(store.categories));
+}
+
+function daysAgo(date) {
+  return Math.floor((Date.now() - new Date(date)) / 86400000);
+}
+
+function render() {
+  const area = document.getElementById("tasks");
+  area.innerHTML = "";
+
+  store.categories.forEach(cat => {
+    const h = document.createElement("h4");
+    h.textContent = cat.name;
+    area.appendChild(h);
+
+    const g = document.createElement("div");
+    g.className = "grid";
+
+    store.tasks.filter(t => t.categoryId === cat.id).forEach(t => {
+      const d = daysAgo(t.lastDone);
+      const el = document.createElement("div");
+      el.className = "icon";
+      if (d <= cat.days) el.classList.add("black");
+      if (d > cat.days + 7) el.classList.add("red");
+
+      el.innerHTML = `
+        ${t.title}<br>
+        <span class="small">${t.lastDone}</span>
+      `;
+
+      let timer;
+      el.ontouchstart = () => {
+        timer = setTimeout(() => editTask(t), 600);
+      };
+      el.ontouchend = () => {
+        clearTimeout(timer);
+      };
+
+      el.onclick = () => {
+        t.lastDone = new Date().toISOString().slice(0,10);
+        save(); render();
+      };
+
+      g.appendChild(el);
+    });
+
+    area.appendChild(g);
+  });
+}
+
+function showModal(html) {
+  modalInner.innerHTML = html;
+  modal.style.display = "flex";
+}
+
+function closeModal() {
+  modal.style.display = "none";
+}
+
+function addCategory() {
+  showModal(`
+    <h4>分類を追加</h4>
+    <input id="cname" placeholder="分類名"><br><br>
+    <input id="cdays" type="number" placeholder="日数"><br><br>
+    <button onclick="saveCategory()">保存</button>
+    <button onclick="closeModal()">キャンセル</button>
+  `);
+}
+
+function saveCategory() {
+  store.categories.push({
+    id: Date.now().toString(),
+    name: cname.value,
+    days: Number(cdays.value)
+  });
+  save(); closeModal(); render();
+}
+
+function addTask() {
+  showModal(`
+    <h4>家事を追加</h4>
+    <input id="tname" placeholder="家事名"><br><br>
+    ${store.categories.map(c =>
+      `<button onclick="selectCat('${c.id}')">${c.name}</button>`
+    ).join("")}
+    <input type="hidden" id="cat">
+    <br><br>
+    <button onclick="saveTask()">保存</button>
+    <button onclick="closeModal()">キャンセル</button>
+  `);
+}
+
+function selectCat(id) {
+  cat.value = id;
+}
+
+function saveTask() {
+  store.tasks.push({
+    id: Date.now().toString(),
+    title: tname.value,
+    categoryId: cat.value,
+    lastDone: new Date().toISOString().slice(0,10),
+    memo: ""
+  });
+  save(); closeModal(); render();
+}
+
+function editTask(t) {
+  showModal(`
+    <h4>編集</h4>
+    <input id="ename" value="${t.title}"><br><br>
+    <textarea id="ememo" placeholder="メモ">${t.memo || ""}</textarea><br><br>
+    <button onclick="updateTask('${t.id}')">保存</button>
+    <button onclick="deleteTask('${t.id}')">削除</button>
+  `);
+}
+
+function updateTask(id) {
+  const t = store.tasks.find(x => x.id === id);
+  t.title = ename.value;
+  t.memo = ememo.value;
+  save(); closeModal(); render();
+}
+
+function deleteTask(id) {
+  store.tasks = store.tasks.filter(x => x.id !== id);
+  save(); closeModal(); render();
+}
+
+addTask.onclick = addTask;
+addCategory.onclick = addCategory;
+render();
+</script>
+
+</body>
+</html>
